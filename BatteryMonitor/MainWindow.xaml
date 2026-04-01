@@ -4,7 +4,7 @@
         xmlns:controls="clr-namespace:BatteryMonitor.Controls"
         xmlns:conv="clr-namespace:BatteryMonitor.Converters"
         Title="Battery Monitor"
-        Icon="Resources/AppIcon.ico"
+        Icon="pack://application:,,,/Resources/AppIcon.ico"
         Width="580" Height="700"
         ResizeMode="NoResize"
         WindowStartupLocation="CenterScreen"
