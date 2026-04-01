@@ -63,18 +63,20 @@ public class TrayIconService : IDisposable
     private System.Windows.Controls.MenuItem _menuBadgeOff = null!;
     private System.Windows.Controls.MenuItem _menuBadgePercent = null!;
     private System.Windows.Controls.MenuItem _menuBadgeWatt = null!;
+    private System.Windows.Controls.MenuItem _menuOpen = null!;
+    private System.Windows.Controls.MenuItem _menuExit = null!;
 
     private void BuildContextMenu()
     {
         var menu = new System.Windows.Controls.ContextMenu();
 
-        _menuChargePercent = new System.Windows.Controls.MenuItem { Header = "Anzeige: Ladestand", IsChecked = true };
+        _menuChargePercent = new System.Windows.Controls.MenuItem { Header = Loc.Get("show_percent"), IsChecked = true };
         _menuChargePercent.Click += (_, _) => DisplayMode = TrayDisplayMode.ChargePercent;
 
-        _menuWatt = new System.Windows.Controls.MenuItem { Header = "Anzeige: Watt" };
+        _menuWatt = new System.Windows.Controls.MenuItem { Header = Loc.Get("show_watt") };
         _menuWatt.Click += (_, _) => DisplayMode = TrayDisplayMode.Watt;
 
-        _menuMwh = new System.Windows.Controls.MenuItem { Header = "Anzeige: mWh" };
+        _menuMwh = new System.Windows.Controls.MenuItem { Header = Loc.Get("show_mwh") };
         _menuMwh.Click += (_, _) => DisplayMode = TrayDisplayMode.CapacityMwh;
 
         menu.Items.Add(_menuChargePercent);
@@ -83,13 +85,13 @@ public class TrayIconService : IDisposable
         menu.Items.Add(new System.Windows.Controls.Separator());
 
         // Badge submenu
-        _menuBadgeOff = new System.Windows.Controls.MenuItem { Header = "Badge: Aus" };
+        _menuBadgeOff = new System.Windows.Controls.MenuItem { Header = Loc.Get("badge_off") };
         _menuBadgeOff.Click += (_, _) => SetBadgeMode(BadgeDisplayMode.Off);
 
-        _menuBadgePercent = new System.Windows.Controls.MenuItem { Header = "Badge: Ladestand", IsChecked = true };
+        _menuBadgePercent = new System.Windows.Controls.MenuItem { Header = Loc.Get("badge_percent"), IsChecked = true };
         _menuBadgePercent.Click += (_, _) => SetBadgeMode(BadgeDisplayMode.ChargePercent);
 
-        _menuBadgeWatt = new System.Windows.Controls.MenuItem { Header = "Badge: Watt" };
+        _menuBadgeWatt = new System.Windows.Controls.MenuItem { Header = Loc.Get("badge_watt") };
         _menuBadgeWatt.Click += (_, _) => SetBadgeMode(BadgeDisplayMode.Watt);
 
         menu.Items.Add(_menuBadgeOff);
@@ -97,15 +99,28 @@ public class TrayIconService : IDisposable
         menu.Items.Add(_menuBadgeWatt);
         menu.Items.Add(new System.Windows.Controls.Separator());
 
-        var openItem = new System.Windows.Controls.MenuItem { Header = "Öffnen" };
-        openItem.Click += (_, _) => ShowRequested?.Invoke();
-        menu.Items.Add(openItem);
+        _menuOpen = new System.Windows.Controls.MenuItem { Header = Loc.Get("open") };
+        _menuOpen.Click += (_, _) => ShowRequested?.Invoke();
+        menu.Items.Add(_menuOpen);
 
-        var exitItem = new System.Windows.Controls.MenuItem { Header = "Beenden" };
-        exitItem.Click += (_, _) => ExitRequested?.Invoke();
-        menu.Items.Add(exitItem);
+        _menuExit = new System.Windows.Controls.MenuItem { Header = Loc.Get("exit") };
+        _menuExit.Click += (_, _) => ExitRequested?.Invoke();
+        menu.Items.Add(_menuExit);
 
         _trayIcon.ContextMenu = menu;
+    }
+
+    public void ApplyLanguage()
+    {
+        _menuChargePercent.Header = Loc.Get("show_percent");
+        _menuWatt.Header          = Loc.Get("show_watt");
+        _menuMwh.Header           = Loc.Get("show_mwh");
+        _menuBadgeOff.Header      = Loc.Get("badge_off");
+        _menuBadgePercent.Header  = Loc.Get("badge_percent");
+        _menuBadgeWatt.Header     = Loc.Get("badge_watt");
+        _menuOpen.Header          = Loc.Get("open");
+        _menuExit.Header          = Loc.Get("exit");
+        if (_lastInfo != null) UpdateIcon(_lastInfo);
     }
 
     private void UpdateMenuChecks()
@@ -161,9 +176,9 @@ public class TrayIconService : IDisposable
         var tooltip = info != null
             ? $"Battery Monitor — {info.ChargePercent}%  ·  " +
               (info.Charging
-                  ? $"Laden {info.ChargeRateWatt?.ToString("F1") ?? "…"}W"
-                  : $"Entladung {info.DischargeRateWatt:F1}W") +
-              $"  ·  {(info.Charging ? "Lädt" : info.PowerOnline ? "Am Strom" : "Akku")}"
+                  ? $"{Loc.Get("charging_tt")} {info.ChargeRateWatt?.ToString("F1") ?? "…"}W"
+                  : $"{Loc.Get("discharging_tt")} {info.DischargeRateWatt:F1}W") +
+              $"  ·  {(info.Charging ? Loc.Get("charging") : info.PowerOnline ? Loc.Get("on_power") : Loc.Get("on_battery"))}"
             : "Battery Monitor";
 
         _trayIcon.ToolTipText = tooltip;

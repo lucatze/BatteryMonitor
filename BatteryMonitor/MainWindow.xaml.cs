@@ -48,9 +48,18 @@ public partial class MainWindow : Window
         LightAccentBlue.Freeze();
     }
 
+    private readonly AppSettings _settings;
+
     public MainWindow()
     {
         InitializeComponent();
+
+        // Load settings and apply language before building UI
+        _settings = AppSettings.Load();
+        var lang = string.IsNullOrEmpty(_settings.Language)
+            ? Loc.DetectSystemLanguage()
+            : _settings.Language;
+        Loc.SetLanguage(lang);
 
         _trayService = new TrayIconService();
         _trayService.ShowRequested += () => Dispatcher.Invoke(ShowFromTray);
@@ -72,6 +81,7 @@ public partial class MainWindow : Window
         };
 
         ApplyTheme();
+        ApplyLocalization();
     }
 
     private SolidColorBrush Bg => _isDarkMode ? DarkBg : LightBg;
@@ -158,6 +168,60 @@ public partial class MainWindow : Window
         HealthGauge.UpdateTheme(TextPrimary, TextMuted, Accent, CardBorder);
     }
 
+    private void ApplyLocalization()
+    {
+        LangBtn.Content = Loc.Current.ToUpperInvariant();
+        LangBtn.Foreground = TextMuted;
+
+        ChargeGauge.Label  = Loc.Get("charge_level");
+        HealthGauge.Label  = Loc.Get("health");
+
+        WattBoxLabel.Text  = Loc.Get("charge_rate");
+        DischargeLabel.Text = Loc.Get("discharge");
+
+        EstimateTitle.Text = Loc.Get("forecast");
+        VoltageLabel.Text  = Loc.Get("voltage");
+        VoltUnitText.Text  = Loc.Get("volt");
+        PowerUnitText.Text = Loc.Get("watt");
+
+        CapTitle.Text      = Loc.Get("capacity");
+        DesignCapLabel.Text = Loc.Get("design_cap");
+        FullCapLabel.Text  = Loc.Get("full_cap");
+        RemCapLabel.Text   = Loc.Get("remaining");
+
+        DeviceTitle.Text   = Loc.Get("device");
+        ModelLabel.Text    = Loc.Get("model");
+        MfgLabel.Text      = Loc.Get("manufacturer");
+        SnLabel.Text       = Loc.Get("serial");
+
+        _trayService.ApplyLanguage();
+
+        if (_lastBatteryInfo != null) UpdateUI(_lastBatteryInfo);
+    }
+
+    private void LangBtn_Click(object sender, RoutedEventArgs e)
+    {
+        var menu = new System.Windows.Controls.ContextMenu { PlacementTarget = LangBtn };
+        foreach (var (code, name) in Loc.Languages)
+        {
+            var item = new System.Windows.Controls.MenuItem
+            {
+                Header = name,
+                IsChecked = code == Loc.Current,
+            };
+            var captured = code;
+            item.Click += (_, _) =>
+            {
+                Loc.SetLanguage(captured);
+                _settings.Language = captured;
+                _settings.Save();
+                ApplyLocalization();
+            };
+            menu.Items.Add(item);
+        }
+        menu.IsOpen = true;
+    }
+
     private void ToggleTheme_Click(object sender, RoutedEventArgs e)
     {
         _isDarkMode = !_isDarkMode;
@@ -171,17 +235,17 @@ public partial class MainWindow : Window
         if (info.Charging)
         {
             StatusDot.Fill = Green;
-            StatusText.Text = "Lädt";
+            StatusText.Text = Loc.Get("charging");
         }
         else if (info.PowerOnline)
         {
             StatusDot.Fill = Amber;
-            StatusText.Text = "Am Strom";
+            StatusText.Text = Loc.Get("on_power");
         }
         else
         {
             StatusDot.Fill = Red;
-            StatusText.Text = "Akku";
+            StatusText.Text = Loc.Get("on_battery");
         }
 
         // Device subline
@@ -203,40 +267,40 @@ public partial class MainWindow : Window
         // Estimates card
         if (info.Charging)
         {
-            EstimateLabel.Text = "VOLL IN";
+            EstimateLabel.Text = Loc.Get("full_in");
             var ttf = info.EstimatedTimeToFullMinutes;
             if (ttf.HasValue && ttf.Value > 0)
             {
                 var h = ttf.Value / 60;
                 var m = ttf.Value % 60;
                 EstimateTimeText.Text = h > 0 ? $"{h}:{m:D2}" : $"{m}";
-                EstimateUnitText.Text = h > 0 ? "Std:Min" : "Minuten";
+                EstimateUnitText.Text = h > 0 ? Loc.Get("hours_min") : Loc.Get("minutes");
             }
             else
             {
                 EstimateTimeText.Text = "\u2026";
                 EstimateUnitText.Text = "";
             }
-            PowerLabel.Text = "LADELEISTUNG";
+            PowerLabel.Text = Loc.Get("charge_rate");
             PowerText.Text = info.ChargeRateWatt?.ToString("F1") ?? "\u2026";
         }
         else
         {
-            EstimateLabel.Text = "RESTLAUFZEIT";
+            EstimateLabel.Text = Loc.Get("runtime");
             var rt = info.EstimatedRuntimeMinutes;
             if (rt.HasValue && rt.Value > 0)
             {
                 var h = rt.Value / 60;
                 var m = rt.Value % 60;
                 EstimateTimeText.Text = h > 0 ? $"{h}:{m:D2}" : $"{m}";
-                EstimateUnitText.Text = h > 0 ? "Std:Min" : "Minuten";
+                EstimateUnitText.Text = h > 0 ? Loc.Get("hours_min") : Loc.Get("minutes");
             }
             else
             {
                 EstimateTimeText.Text = "\u2026";
                 EstimateUnitText.Text = "";
             }
-            PowerLabel.Text = "VERBRAUCH";
+            PowerLabel.Text = Loc.Get("consumption");
             PowerText.Text = info.DischargeRateWatt > 0 ? info.DischargeRateWatt.ToString("F1") : "\u2026";
         }
 
@@ -264,7 +328,7 @@ public partial class MainWindow : Window
         SerialText.Text = info.SerialNumber;
 
         // Footer
-        UpdatedText.Text = $"Aktualisiert {DateTime.Now:HH:mm:ss}";
+        UpdatedText.Text = $"{Loc.Get("updated")} {DateTime.Now:HH:mm:ss}";
 
         // Taskbar overlay badge
         _lastBatteryInfo = info;
