@@ -1,0 +1,292 @@
+using System.Windows;
+using System.Windows.Controls;
+using System.Windows.Input;
+using System.Windows.Media;
+using BatteryMonitor.Services;
+
+namespace BatteryMonitor;
+
+public partial class MainWindow : Window
+{
+    private readonly BatteryService _batteryService;
+    private readonly TrayIconService _trayService;
+    private bool _isDarkMode = true;
+
+    private static readonly SolidColorBrush Green = new(Color.FromRgb(0x30, 0xD1, 0x58));
+    private static readonly SolidColorBrush Amber = new(Color.FromRgb(0xFF, 0x9F, 0x0A));
+    private static readonly SolidColorBrush Red = new(Color.FromRgb(0xFF, 0x45, 0x3A));
+    private static readonly SolidColorBrush AccentBlue = new(Color.FromRgb(0x4A, 0x9E, 0xFF));
+
+    // Dark theme — bright whites
+    private static readonly SolidColorBrush DarkBg = new(Color.FromRgb(0x0D, 0x0F, 0x14));
+    private static readonly SolidColorBrush DarkCardBg = new(Color.FromRgb(0x14, 0x17, 0x20));
+    private static readonly SolidColorBrush DarkCardBorder = new(Color.FromRgb(0x1E, 0x23, 0x30));
+    private static readonly SolidColorBrush DarkTextPrimary = new(Color.FromRgb(0xFF, 0xFF, 0xFF)); // pure white
+    private static readonly SolidColorBrush DarkTextMuted = new(Color.FromRgb(0xB0, 0xBC, 0xDA));  // much brighter muted
+    private static readonly SolidColorBrush DarkTextDim = new(Color.FromRgb(0x60, 0x6E, 0x90));    // brighter dim
+
+    // Light theme — pure black text
+    private static readonly SolidColorBrush LightBg = new(Color.FromRgb(0xF3, 0xF4, 0xF6));
+    private static readonly SolidColorBrush LightCardBg = new(Color.FromRgb(0xFF, 0xFF, 0xFF));
+    private static readonly SolidColorBrush LightCardBorder = new(Color.FromRgb(0xD8, 0xDB, 0xE6));
+    private static readonly SolidColorBrush LightTextPrimary = new(Color.FromRgb(0x0A, 0x0A, 0x0A)); // near-black
+    private static readonly SolidColorBrush LightTextMuted = new(Color.FromRgb(0x4A, 0x55, 0x68));   // dark grey
+    private static readonly SolidColorBrush LightTextDim = new(Color.FromRgb(0x90, 0x9A, 0xB0));
+    private static readonly SolidColorBrush LightAccentBlue = new(Color.FromRgb(0x1D, 0x4E, 0xD8));
+
+    static MainWindow()
+    {
+        Green.Freeze(); Amber.Freeze(); Red.Freeze(); AccentBlue.Freeze();
+        DarkBg.Freeze(); DarkCardBg.Freeze(); DarkCardBorder.Freeze();
+        DarkTextPrimary.Freeze(); DarkTextMuted.Freeze(); DarkTextDim.Freeze();
+        LightBg.Freeze(); LightCardBg.Freeze(); LightCardBorder.Freeze();
+        LightTextPrimary.Freeze(); LightTextMuted.Freeze(); LightTextDim.Freeze();
+        LightAccentBlue.Freeze();
+    }
+
+    public MainWindow()
+    {
+        InitializeComponent();
+
+        _trayService = new TrayIconService();
+        _trayService.ShowRequested += () => Dispatcher.Invoke(ShowFromTray);
+        _trayService.ExitRequested += () => Dispatcher.Invoke(ExitApp);
+
+        _batteryService = new BatteryService();
+        _batteryService.BatteryUpdated += info => Dispatcher.Invoke(() => UpdateUI(info));
+        _batteryService.ErrorChanged += err => Dispatcher.Invoke(() => ErrorText.Text = err ?? "");
+
+        Closing += (_, e) =>
+        {
+            e.Cancel = true;
+            HideToTray();
+        };
+
+        ApplyTheme();
+    }
+
+    private SolidColorBrush Bg => _isDarkMode ? DarkBg : LightBg;
+    private SolidColorBrush CardBg => _isDarkMode ? DarkCardBg : LightCardBg;
+    private SolidColorBrush CardBorder => _isDarkMode ? DarkCardBorder : LightCardBorder;
+    private SolidColorBrush TextPrimary => _isDarkMode ? DarkTextPrimary : LightTextPrimary;
+    private SolidColorBrush TextMuted => _isDarkMode ? DarkTextMuted : LightTextMuted;
+    private SolidColorBrush TextDim => _isDarkMode ? DarkTextDim : LightTextDim;
+    private SolidColorBrush Accent => _isDarkMode ? AccentBlue : LightAccentBlue;
+
+    private void ApplyTheme()
+    {
+        RootWindow.Background = Bg;
+        RootBorder.BorderBrush = CardBorder;
+        TitleBarGrid.Background = Bg;
+        RootGrid.Background = Bg;
+
+        // Title bar
+        TitleIcon.Foreground = Amber;
+        TitleText.Foreground = TextPrimary;
+        StatusText.Foreground = TextMuted;
+        ThemeToggleBtn.Content = _isDarkMode ? "\u2600" : "\u263E"; // sun / moon
+        ThemeToggleBtn.Foreground = TextMuted;
+
+        // Device subline
+        DeviceSubline.Foreground = TextDim;
+
+        // Watt box
+        WattBoxBorder.Background = CardBg;
+        WattBoxBorder.BorderBrush = CardBorder;
+        WattBoxLabel.Foreground = Green;
+        ChargeRateText.Foreground = Green;
+        WattSep.Fill = CardBorder;
+        DischargeLabel.Foreground = Amber;
+        DischargeRateText.Foreground = Amber;
+
+        // Estimate card
+        EstimateCard.Background = CardBg;
+        EstimateCard.BorderBrush = CardBorder;
+        EstimateTitle.Foreground = Accent;
+        EstimateSep.Fill = CardBorder;
+        EstimateLabel.Foreground = TextDim;
+        EstimateTimeText.Foreground = TextPrimary;
+        EstimateUnitText.Foreground = TextMuted;
+        VoltageLabel.Foreground = TextDim;
+        VoltageText.Foreground = TextPrimary;
+        VoltUnitText.Foreground = TextMuted;
+        PowerLabel.Foreground = TextDim;
+        PowerText.Foreground = TextPrimary;
+        PowerUnitText.Foreground = TextMuted;
+
+        // Capacity card
+        CapacityCard.Background = CardBg;
+        CapacityCard.BorderBrush = CardBorder;
+        CapTitle.Foreground = Accent;
+        CapSep.Fill = CardBorder;
+        DesignCapLabel.Foreground = TextMuted;
+        DesignCapText.Foreground = TextPrimary;
+        FullCapLabel.Foreground = TextMuted;
+        FullCapText.Foreground = TextPrimary;
+        RemCapLabel.Foreground = TextMuted;
+        BarBg.Fill = CardBorder;
+
+        // Device card
+        DeviceCard.Background = CardBg;
+        DeviceCard.BorderBrush = CardBorder;
+        DeviceTitle.Foreground = Accent;
+        DeviceSep.Fill = CardBorder;
+        ModelLabel.Foreground = TextMuted;
+        ModelText.Foreground = TextPrimary;
+        MfgLabel.Foreground = TextMuted;
+        ManufacturerText.Foreground = TextPrimary;
+        SnLabel.Foreground = TextMuted;
+        SerialText.Foreground = TextPrimary;
+
+        // Footer
+        ErrorText.Foreground = Red;
+        UpdatedText.Foreground = TextDim;
+
+        // Gauge colors update
+        ChargeGauge.UpdateTheme(TextPrimary, TextMuted, Accent, CardBorder);
+        HealthGauge.UpdateTheme(TextPrimary, TextMuted, Accent, CardBorder);
+    }
+
+    private void ToggleTheme_Click(object sender, RoutedEventArgs e)
+    {
+        _isDarkMode = !_isDarkMode;
+        ApplyTheme();
+        _trayService.SetDarkMode(_isDarkMode);
+    }
+
+    private void UpdateUI(BatteryInfo info)
+    {
+        // Status dot + text
+        if (info.Charging)
+        {
+            StatusDot.Fill = Green;
+            StatusText.Text = "Lädt";
+        }
+        else if (info.PowerOnline)
+        {
+            StatusDot.Fill = Amber;
+            StatusText.Text = "Am Strom";
+        }
+        else
+        {
+            StatusDot.Fill = Red;
+            StatusText.Text = "Akku";
+        }
+
+        // Device subline
+        DeviceSubline.Text = $"{info.DeviceName}  \u00B7  {info.Manufacturer}  \u00B7  SN {info.SerialNumber}";
+
+        // Gauges
+        var chargeColor = info.ChargePercent >= 50 ? Green : info.ChargePercent >= 20 ? Amber : Red;
+        ChargeGauge.Value = info.ChargePercent;
+        ChargeGauge.GaugeColor = chargeColor;
+
+        var healthColor = info.HealthPercent >= 85 ? Green : info.HealthPercent >= 65 ? Amber : Red;
+        HealthGauge.Value = info.HealthPercent;
+        HealthGauge.GaugeColor = healthColor;
+
+        // Watt box
+        ChargeRateText.Text = info.ChargeRateWatt.HasValue ? $"{info.ChargeRateWatt.Value:F1} W" : "\u2026";
+        DischargeRateText.Text = $"{info.DischargeRateWatt:F1} W";
+
+        // Estimates card
+        if (info.Charging)
+        {
+            EstimateLabel.Text = "VOLL IN";
+            var ttf = info.EstimatedTimeToFullMinutes;
+            if (ttf.HasValue && ttf.Value > 0)
+            {
+                var h = ttf.Value / 60;
+                var m = ttf.Value % 60;
+                EstimateTimeText.Text = h > 0 ? $"{h}:{m:D2}" : $"{m}";
+                EstimateUnitText.Text = h > 0 ? "Std:Min" : "Minuten";
+            }
+            else
+            {
+                EstimateTimeText.Text = "\u2026";
+                EstimateUnitText.Text = "";
+            }
+            PowerLabel.Text = "LADELEISTUNG";
+            PowerText.Text = info.ChargeRateWatt?.ToString("F1") ?? "\u2026";
+        }
+        else
+        {
+            EstimateLabel.Text = "RESTLAUFZEIT";
+            var rt = info.EstimatedRuntimeMinutes;
+            if (rt.HasValue && rt.Value > 0)
+            {
+                var h = rt.Value / 60;
+                var m = rt.Value % 60;
+                EstimateTimeText.Text = h > 0 ? $"{h}:{m:D2}" : $"{m}";
+                EstimateUnitText.Text = h > 0 ? "Std:Min" : "Minuten";
+            }
+            else
+            {
+                EstimateTimeText.Text = "\u2026";
+                EstimateUnitText.Text = "";
+            }
+            PowerLabel.Text = "VERBRAUCH";
+            PowerText.Text = info.DischargeRateWatt > 0 ? info.DischargeRateWatt.ToString("F1") : "\u2026";
+        }
+
+        // Voltage
+        VoltageText.Text = info.VoltageMv > 0 ? (info.VoltageMv / 1000.0).ToString("F2") : "\u2026";
+
+        // Capacity card
+        DesignCapText.Text = FormatMwh(info.DesignedCapacityMwh);
+        FullCapText.Text = FormatMwh(info.FullChargedCapacityMwh);
+        RemainingCapText.Text = FormatMwh(info.RemainingCapacityMwh);
+        RemainingCapText.Foreground = chargeColor;
+
+        // Progress bar
+        var barPct = info.FullChargedCapacityMwh > 0
+            ? Math.Clamp(info.RemainingCapacityMwh / (double)info.FullChargedCapacityMwh, 0, 1)
+            : 0;
+        ChargeBar.Width = ChargeBar.Parent is Grid grid
+            ? grid.ActualWidth * barPct
+            : 0;
+        ChargeBar.Fill = chargeColor;
+
+        // Device card
+        ModelText.Text = info.DeviceName;
+        ManufacturerText.Text = info.Manufacturer;
+        SerialText.Text = info.SerialNumber;
+
+        // Footer
+        UpdatedText.Text = $"Aktualisiert {DateTime.Now:HH:mm:ss}";
+
+        // Tray
+        _trayService.UpdateIcon(info);
+    }
+
+    private static string FormatMwh(int mwh) => $"{mwh:N0} mWh  ({mwh / 1000.0:F1} Wh)";
+
+    private void TitleBar_MouseLeftButtonDown(object sender, MouseButtonEventArgs e)
+    {
+        if (e.ClickCount == 1)
+            DragMove();
+    }
+
+    private void MinimizeToTray_Click(object sender, RoutedEventArgs e) => HideToTray();
+    private void Close_Click(object sender, RoutedEventArgs e) => ExitApp();
+
+    private void HideToTray()
+    {
+        Hide();
+        _trayService.SetVisible(true);
+    }
+
+    private void ShowFromTray()
+    {
+        Show();
+        WindowState = WindowState.Normal;
+        Activate();
+    }
+
+    private void ExitApp()
+    {
+        _trayService.Dispose();
+        _batteryService.Dispose();
+        Application.Current.Shutdown();
+    }
+}

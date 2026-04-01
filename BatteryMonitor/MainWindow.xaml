@@ -1,0 +1,217 @@
+<Window x:Class="BatteryMonitor.MainWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:controls="clr-namespace:BatteryMonitor.Controls"
+        xmlns:conv="clr-namespace:BatteryMonitor.Converters"
+        Title="Battery Monitor"
+        Width="580" Height="700"
+        ResizeMode="NoResize"
+        WindowStartupLocation="CenterScreen"
+        WindowStyle="None"
+        AllowsTransparency="False"
+        x:Name="RootWindow">
+
+    <Window.Resources>
+        <conv:ChargeToColorConverter x:Key="ChargeToColor"/>
+        <conv:HealthToColorConverter x:Key="HealthToColor"/>
+        <conv:NullableWattConverter x:Key="NullableWatt"/>
+        <conv:MwhToWhConverter x:Key="MwhToWh"/>
+
+        <Style x:Key="TitleBarButton" TargetType="Button">
+            <Setter Property="Background" Value="Transparent"/>
+            <Setter Property="BorderThickness" Value="0"/>
+            <Setter Property="Cursor" Value="Hand"/>
+            <Setter Property="Width" Value="40"/>
+            <Setter Property="Height" Value="32"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <Border x:Name="Bd" Background="Transparent" CornerRadius="4">
+                            <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="Bd" Property="Background" Value="#22FFFFFF"/>
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+    </Window.Resources>
+
+    <Border x:Name="RootBorder" BorderThickness="1" CornerRadius="0">
+        <Grid x:Name="RootGrid">
+            <Grid.RowDefinitions>
+                <RowDefinition Height="40"/>
+                <RowDefinition Height="*"/>
+            </Grid.RowDefinitions>
+
+            <!-- Custom title bar -->
+            <Grid Grid.Row="0" x:Name="TitleBarGrid" MouseLeftButtonDown="TitleBar_MouseLeftButtonDown">
+                <StackPanel Orientation="Horizontal" VerticalAlignment="Center" Margin="14,0,0,0">
+                    <TextBlock Text="&#x26A1;" FontSize="18" x:Name="TitleIcon" Margin="0,0,8,0"/>
+                    <TextBlock Text="BATTERY MONITOR" FontSize="16" FontWeight="Bold" x:Name="TitleText" VerticalAlignment="Center"/>
+                </StackPanel>
+
+                <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" VerticalAlignment="Center" Margin="0,0,6,0">
+                    <Ellipse x:Name="StatusDot" Width="10" Height="10" Margin="0,0,6,0"/>
+                    <TextBlock x:Name="StatusText" FontSize="13" Margin="0,0,12,0" VerticalAlignment="Center"/>
+                    <Button x:Name="ThemeToggleBtn" Click="ToggleTheme_Click" Style="{StaticResource TitleBarButton}" FontSize="16"/>
+                    <Button Content="&#x2014;" Click="MinimizeToTray_Click" Style="{StaticResource TitleBarButton}" FontSize="14"/>
+                    <Button Content="&#x2715;" Click="Close_Click" Style="{StaticResource TitleBarButton}" FontSize="13"/>
+                </StackPanel>
+            </Grid>
+
+            <!-- Main content -->
+            <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
+                <StackPanel Margin="16,0,16,10">
+
+                    <!-- Device subline -->
+                    <TextBlock x:Name="DeviceSubline" FontSize="12" Margin="0,5,0,10"/>
+
+                    <!-- Gauge row -->
+                    <Grid Margin="0,0,0,10" Height="158">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*"/>
+                            <ColumnDefinition Width="*"/>
+                            <ColumnDefinition Width="*"/>
+                        </Grid.ColumnDefinitions>
+
+                        <controls:GaugeControl x:Name="ChargeGauge" Grid.Column="0" Label="LADESTAND" Unit="%"
+                                               HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                        <controls:GaugeControl x:Name="HealthGauge" Grid.Column="1" Label="GESUNDHEIT" Unit="%"
+                                               HorizontalAlignment="Center" VerticalAlignment="Center"/>
+
+                        <!-- Watt box -->
+                        <Border Grid.Column="2" x:Name="WattBoxBorder"
+                                BorderThickness="1" CornerRadius="8" Padding="10,8,10,8" Margin="4,4,0,4"
+                                VerticalAlignment="Center">
+                            <StackPanel>
+                                <TextBlock x:Name="WattBoxLabel" Text="LADELEISTUNG" FontSize="12" FontWeight="Bold"
+                                           HorizontalAlignment="Center" Margin="0,0,0,4"/>
+                                <TextBlock x:Name="ChargeRateText" FontSize="22" FontWeight="Bold"
+                                           HorizontalAlignment="Center" Margin="0,0,0,8"/>
+                                <Rectangle Height="1" x:Name="WattSep" Margin="-4,0,-4,8"/>
+                                <TextBlock x:Name="DischargeLabel" Text="ENTLADUNG" FontSize="12" FontWeight="Bold"
+                                           HorizontalAlignment="Center" Margin="0,0,0,4"/>
+                                <TextBlock x:Name="DischargeRateText" FontSize="22" FontWeight="Bold"
+                                           HorizontalAlignment="Center"/>
+                            </StackPanel>
+                        </Border>
+                    </Grid>
+
+                    <!-- Estimate card -->
+                    <Border x:Name="EstimateCard" BorderThickness="1" CornerRadius="8" Padding="12,10,12,10" Margin="0,0,0,8">
+                        <StackPanel>
+                            <TextBlock x:Name="EstimateTitle" Text="PROGNOSE" FontSize="14" FontWeight="Bold" Margin="0,0,0,7"/>
+                            <Rectangle Height="1" x:Name="EstimateSep" Margin="0,0,0,8"/>
+                            <Grid>
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*"/>
+                                    <ColumnDefinition Width="*"/>
+                                    <ColumnDefinition Width="*"/>
+                                </Grid.ColumnDefinitions>
+
+                                <StackPanel Grid.Column="0" HorizontalAlignment="Center">
+                                    <TextBlock x:Name="EstimateLabel" Text="RESTLAUFZEIT" FontSize="12" FontWeight="Bold"
+                                               HorizontalAlignment="Center" Margin="0,0,0,4"/>
+                                    <TextBlock x:Name="EstimateTimeText" FontSize="34" FontWeight="Bold" HorizontalAlignment="Center"/>
+                                    <TextBlock x:Name="EstimateUnitText" Text="" FontSize="13" HorizontalAlignment="Center"/>
+                                </StackPanel>
+
+                                <StackPanel Grid.Column="1" HorizontalAlignment="Center">
+                                    <TextBlock x:Name="VoltageLabel" Text="SPANNUNG" FontSize="12" FontWeight="Bold"
+                                               HorizontalAlignment="Center" Margin="0,0,0,4"/>
+                                    <TextBlock x:Name="VoltageText" FontSize="34" FontWeight="Bold" HorizontalAlignment="Center"/>
+                                    <TextBlock Text="Volt" FontSize="13" x:Name="VoltUnitText" HorizontalAlignment="Center"/>
+                                </StackPanel>
+
+                                <StackPanel Grid.Column="2" HorizontalAlignment="Center">
+                                    <TextBlock x:Name="PowerLabel" Text="VERBRAUCH" FontSize="12" FontWeight="Bold"
+                                               HorizontalAlignment="Center" Margin="0,0,0,4"/>
+                                    <TextBlock x:Name="PowerText" FontSize="34" FontWeight="Bold" HorizontalAlignment="Center"/>
+                                    <TextBlock Text="Watt" FontSize="13" x:Name="PowerUnitText" HorizontalAlignment="Center"/>
+                                </StackPanel>
+                            </Grid>
+                        </StackPanel>
+                    </Border>
+
+                    <!-- Capacity card -->
+                    <Border x:Name="CapacityCard" BorderThickness="1" CornerRadius="8" Padding="12,10,12,10" Margin="0,0,0,8">
+                        <StackPanel>
+                            <TextBlock x:Name="CapTitle" Text="KAPAZITÄT" FontSize="14" FontWeight="Bold" Margin="0,0,0,7"/>
+                            <Rectangle Height="1" x:Name="CapSep" Margin="0,0,0,8"/>
+                            <Grid Margin="0,0,0,2">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="Auto"/>
+                                    <ColumnDefinition Width="*"/>
+                                </Grid.ColumnDefinitions>
+                                <Grid.RowDefinitions>
+                                    <RowDefinition/><RowDefinition/><RowDefinition/>
+                                </Grid.RowDefinitions>
+
+                                <TextBlock Grid.Row="0" Grid.Column="0" Text="Design-Kapazität"
+                                           FontSize="13" x:Name="DesignCapLabel" Margin="0,0,16,5"/>
+                                <TextBlock x:Name="DesignCapText" Grid.Row="0" Grid.Column="1"
+                                           FontSize="13" HorizontalAlignment="Right"/>
+
+                                <TextBlock Grid.Row="1" Grid.Column="0" Text="Ist-Kapazität"
+                                           FontSize="13" x:Name="FullCapLabel" Margin="0,0,16,5"/>
+                                <TextBlock x:Name="FullCapText" Grid.Row="1" Grid.Column="1"
+                                           FontSize="13" HorizontalAlignment="Right"/>
+
+                                <TextBlock Grid.Row="2" Grid.Column="0" Text="Verbleibend"
+                                           FontSize="13" x:Name="RemCapLabel" Margin="0,0,16,5"/>
+                                <TextBlock x:Name="RemainingCapText" Grid.Row="2" Grid.Column="1"
+                                           FontSize="13" HorizontalAlignment="Right"/>
+                            </Grid>
+                            <Grid Margin="0,4,0,0" Height="5">
+                                <Rectangle RadiusX="2" RadiusY="2" x:Name="BarBg"/>
+                                <Rectangle x:Name="ChargeBar" RadiusX="2" RadiusY="2" HorizontalAlignment="Left"/>
+                            </Grid>
+                        </StackPanel>
+                    </Border>
+
+                    <!-- Device card -->
+                    <Border x:Name="DeviceCard" BorderThickness="1" CornerRadius="8" Padding="12,10,12,10" Margin="0,0,0,8">
+                        <StackPanel>
+                            <TextBlock x:Name="DeviceTitle" Text="GERÄT &amp; AKKU" FontSize="14" FontWeight="Bold" Margin="0,0,0,7"/>
+                            <Rectangle Height="1" x:Name="DeviceSep" Margin="0,0,0,8"/>
+                            <Grid>
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="Auto"/>
+                                    <ColumnDefinition Width="*"/>
+                                </Grid.ColumnDefinitions>
+                                <Grid.RowDefinitions>
+                                    <RowDefinition/><RowDefinition/><RowDefinition/>
+                                </Grid.RowDefinitions>
+
+                                <TextBlock Grid.Row="0" Grid.Column="0" Text="Modell"
+                                           FontSize="13" x:Name="ModelLabel" Margin="0,0,16,5"/>
+                                <TextBlock x:Name="ModelText" Grid.Row="0" Grid.Column="1"
+                                           FontSize="13" HorizontalAlignment="Right"/>
+
+                                <TextBlock Grid.Row="1" Grid.Column="0" Text="Hersteller"
+                                           FontSize="13" x:Name="MfgLabel" Margin="0,0,16,5"/>
+                                <TextBlock x:Name="ManufacturerText" Grid.Row="1" Grid.Column="1"
+                                           FontSize="13" HorizontalAlignment="Right"/>
+
+                                <TextBlock Grid.Row="2" Grid.Column="0" Text="Seriennummer"
+                                           FontSize="13" x:Name="SnLabel" Margin="0,0,16,0"/>
+                                <TextBlock x:Name="SerialText" Grid.Row="2" Grid.Column="1"
+                                           FontSize="13" HorizontalAlignment="Right"/>
+                            </Grid>
+                        </StackPanel>
+                    </Border>
+
+                    <!-- Footer -->
+                    <Grid Margin="0,2,0,0">
+                        <TextBlock x:Name="ErrorText" FontSize="10" HorizontalAlignment="Left" VerticalAlignment="Center"/>
+                        <TextBlock x:Name="UpdatedText" FontSize="10" HorizontalAlignment="Right" VerticalAlignment="Center"/>
+                    </Grid>
+                </StackPanel>
+            </ScrollViewer>
+        </Grid>
+    </Border>
+</Window>
