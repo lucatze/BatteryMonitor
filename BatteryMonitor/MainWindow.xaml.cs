@@ -13,6 +13,8 @@ public partial class MainWindow : Window
     private readonly BatteryService _batteryService;
     private readonly TrayIconService _trayService;
     private bool _isDarkMode = true;
+    private BadgeDisplayMode _badgeMode = BadgeDisplayMode.ChargePercent;
+    private BatteryInfo? _lastBatteryInfo;
 
     private static readonly SolidColorBrush Green = new(Color.FromRgb(0x30, 0xD1, 0x58));
     private static readonly SolidColorBrush Amber = new(Color.FromRgb(0xFF, 0x9F, 0x0A));
@@ -53,6 +55,11 @@ public partial class MainWindow : Window
         _trayService = new TrayIconService();
         _trayService.ShowRequested += () => Dispatcher.Invoke(ShowFromTray);
         _trayService.ExitRequested += () => Dispatcher.Invoke(ExitApp);
+        _trayService.BadgeDisplayModeChanged += mode => Dispatcher.Invoke(() =>
+        {
+            _badgeMode = mode;
+            if (_lastBatteryInfo != null) UpdateBadge(_lastBatteryInfo);
+        });
 
         _batteryService = new BatteryService();
         _batteryService.BatteryUpdated += info => Dispatcher.Invoke(() => UpdateUI(info));
@@ -260,17 +267,41 @@ public partial class MainWindow : Window
         UpdatedText.Text = $"Aktualisiert {DateTime.Now:HH:mm:ss}";
 
         // Taskbar overlay badge
-        var badgeBg = info.Charging
-            ? Color.FromRgb(0x4A, 0x9E, 0xFF)   // blau beim Laden
-            : info.ChargePercent >= 50
-                ? Color.FromRgb(0x30, 0xD1, 0x58) // grün
-                : info.ChargePercent >= 20
-                    ? Color.FromRgb(0xFF, 0x9F, 0x0A) // amber
-                    : Color.FromRgb(0xFF, 0x45, 0x3A); // rot
-        TaskbarInfo.Overlay = RenderBadge($"{info.ChargePercent}", badgeBg, Colors.White);
+        _lastBatteryInfo = info;
+        UpdateBadge(info);
 
         // Tray
         _trayService.UpdateIcon(info);
+    }
+
+    private void UpdateBadge(BatteryInfo info)
+    {
+        if (_badgeMode == BadgeDisplayMode.Off)
+        {
+            TaskbarInfo.Overlay = null;
+            return;
+        }
+
+        string text;
+        if (_badgeMode == BadgeDisplayMode.Watt)
+        {
+            var w = info.Charging ? info.ChargeRateWatt : info.DischargeRateWatt;
+            text = w.HasValue && w.Value > 0 ? $"{w.Value:F0}W" : "…";
+        }
+        else
+        {
+            text = $"{info.ChargePercent}";
+        }
+
+        var bg = info.Charging
+            ? Color.FromRgb(0x4A, 0x9E, 0xFF)
+            : info.ChargePercent >= 50
+                ? Color.FromRgb(0x30, 0xD1, 0x58)
+                : info.ChargePercent >= 20
+                    ? Color.FromRgb(0xFF, 0x9F, 0x0A)
+                    : Color.FromRgb(0xFF, 0x45, 0x3A);
+
+        TaskbarInfo.Overlay = RenderBadge(text, bg, Colors.White);
     }
 
     private static string FormatMwh(int mwh) => $"{mwh:N0} mWh  ({mwh / 1000.0:F1} Wh)";

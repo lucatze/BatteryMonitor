@@ -12,6 +12,13 @@ public enum TrayDisplayMode
     CapacityMwh
 }
 
+public enum BadgeDisplayMode
+{
+    Off,
+    ChargePercent,
+    Watt
+}
+
 public class TrayIconService : IDisposable
 {
     private readonly Hardcodet.Wpf.TaskbarNotification.TaskbarIcon _trayIcon;
@@ -21,6 +28,9 @@ public class TrayIconService : IDisposable
 
     public event Action? ShowRequested;
     public event Action? ExitRequested;
+    public event Action<BadgeDisplayMode>? BadgeDisplayModeChanged;
+
+    private BadgeDisplayMode _badgeMode = BadgeDisplayMode.ChargePercent;
 
     public TrayDisplayMode DisplayMode
     {
@@ -50,6 +60,9 @@ public class TrayIconService : IDisposable
     private System.Windows.Controls.MenuItem _menuChargePercent = null!;
     private System.Windows.Controls.MenuItem _menuWatt = null!;
     private System.Windows.Controls.MenuItem _menuMwh = null!;
+    private System.Windows.Controls.MenuItem _menuBadgeOff = null!;
+    private System.Windows.Controls.MenuItem _menuBadgePercent = null!;
+    private System.Windows.Controls.MenuItem _menuBadgeWatt = null!;
 
     private void BuildContextMenu()
     {
@@ -69,6 +82,21 @@ public class TrayIconService : IDisposable
         menu.Items.Add(_menuMwh);
         menu.Items.Add(new System.Windows.Controls.Separator());
 
+        // Badge submenu
+        _menuBadgeOff = new System.Windows.Controls.MenuItem { Header = "Badge: Aus" };
+        _menuBadgeOff.Click += (_, _) => SetBadgeMode(BadgeDisplayMode.Off);
+
+        _menuBadgePercent = new System.Windows.Controls.MenuItem { Header = "Badge: Ladestand", IsChecked = true };
+        _menuBadgePercent.Click += (_, _) => SetBadgeMode(BadgeDisplayMode.ChargePercent);
+
+        _menuBadgeWatt = new System.Windows.Controls.MenuItem { Header = "Badge: Watt" };
+        _menuBadgeWatt.Click += (_, _) => SetBadgeMode(BadgeDisplayMode.Watt);
+
+        menu.Items.Add(_menuBadgeOff);
+        menu.Items.Add(_menuBadgePercent);
+        menu.Items.Add(_menuBadgeWatt);
+        menu.Items.Add(new System.Windows.Controls.Separator());
+
         var openItem = new System.Windows.Controls.MenuItem { Header = "Öffnen" };
         openItem.Click += (_, _) => ShowRequested?.Invoke();
         menu.Items.Add(openItem);
@@ -85,6 +113,16 @@ public class TrayIconService : IDisposable
         _menuChargePercent.IsChecked = _displayMode == TrayDisplayMode.ChargePercent;
         _menuWatt.IsChecked = _displayMode == TrayDisplayMode.Watt;
         _menuMwh.IsChecked = _displayMode == TrayDisplayMode.CapacityMwh;
+        _menuBadgeOff.IsChecked     = _badgeMode == BadgeDisplayMode.Off;
+        _menuBadgePercent.IsChecked = _badgeMode == BadgeDisplayMode.ChargePercent;
+        _menuBadgeWatt.IsChecked    = _badgeMode == BadgeDisplayMode.Watt;
+    }
+
+    private void SetBadgeMode(BadgeDisplayMode mode)
+    {
+        _badgeMode = mode;
+        UpdateMenuChecks();
+        BadgeDisplayModeChanged?.Invoke(mode);
     }
 
     public void SetDarkMode(bool dark)
