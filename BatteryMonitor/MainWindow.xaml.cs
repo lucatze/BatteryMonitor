@@ -88,6 +88,8 @@ public partial class MainWindow : Window
         StatusText.Foreground = TextMuted;
         ThemeToggleBtn.Content = _isDarkMode ? "\u2600" : "\u263E"; // sun / moon
         ThemeToggleBtn.Foreground = TextMuted;
+        MinimizeBtn.Foreground = TextMuted;
+        CloseBtn.Foreground = TextPrimary;
 
         // Device subline
         DeviceSubline.Foreground = TextDim;

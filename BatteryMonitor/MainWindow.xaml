@@ -62,8 +62,8 @@
                     <Ellipse x:Name="StatusDot" Width="10" Height="10" Margin="0,0,6,0"/>
                     <TextBlock x:Name="StatusText" FontSize="13" Margin="0,0,12,0" VerticalAlignment="Center"/>
                     <Button x:Name="ThemeToggleBtn" Click="ToggleTheme_Click" Style="{StaticResource TitleBarButton}" FontSize="16"/>
-                    <Button Content="&#x2014;" Click="MinimizeToTray_Click" Style="{StaticResource TitleBarButton}" FontSize="14"/>
-                    <Button Content="&#x2715;" Click="Close_Click" Style="{StaticResource TitleBarButton}" FontSize="13"/>
+                    <Button x:Name="MinimizeBtn" Content="&#x2014;" Click="MinimizeToTray_Click" Style="{StaticResource TitleBarButton}" FontSize="14"/>
+                    <Button x:Name="CloseBtn" Content="&#x2715;" Click="Close_Click" Style="{StaticResource TitleBarButton}" FontSize="13"/>
                 </StackPanel>
             </Grid>
 
