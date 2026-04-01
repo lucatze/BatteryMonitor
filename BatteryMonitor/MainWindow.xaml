@@ -40,6 +40,10 @@
         </Style>
     </Window.Resources>
 
+    <Window.TaskbarItemInfo>
+        <TaskbarItemInfo x:Name="TaskbarInfo"/>
+    </Window.TaskbarItemInfo>
+
     <Border x:Name="RootBorder" BorderThickness="1" CornerRadius="0">
         <Grid x:Name="RootGrid">
             <Grid.RowDefinitions>

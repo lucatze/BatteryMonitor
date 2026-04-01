@@ -1,7 +1,9 @@
+using System.Globalization;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
 using System.Windows.Media;
+using System.Windows.Media.Imaging;
 using BatteryMonitor.Services;
 
 namespace BatteryMonitor;
@@ -255,11 +257,44 @@ public partial class MainWindow : Window
         // Footer
         UpdatedText.Text = $"Aktualisiert {DateTime.Now:HH:mm:ss}";
 
+        // Taskbar overlay badge
+        var badgeBg = info.Charging
+            ? Color.FromRgb(0x4A, 0x9E, 0xFF)   // blau beim Laden
+            : info.ChargePercent >= 50
+                ? Color.FromRgb(0x30, 0xD1, 0x58) // grün
+                : info.ChargePercent >= 20
+                    ? Color.FromRgb(0xFF, 0x9F, 0x0A) // amber
+                    : Color.FromRgb(0xFF, 0x45, 0x3A); // rot
+        TaskbarInfo.Overlay = RenderBadge($"{info.ChargePercent}", badgeBg, Colors.White);
+
         // Tray
         _trayService.UpdateIcon(info);
     }
 
     private static string FormatMwh(int mwh) => $"{mwh:N0} mWh  ({mwh / 1000.0:F1} Wh)";
+
+    private static ImageSource RenderBadge(string text, Color bg, Color fg)
+    {
+        const int size = 32;
+        var visual = new DrawingVisual();
+        using (var dc = visual.RenderOpen())
+        {
+            dc.DrawEllipse(new SolidColorBrush(bg), null, new Point(size / 2.0, size / 2.0), size / 2.0, size / 2.0);
+            var ft = new FormattedText(
+                text,
+                CultureInfo.InvariantCulture,
+                System.Windows.FlowDirection.LeftToRight,
+                new Typeface(new System.Windows.Media.FontFamily("Segoe UI"), FontStyles.Normal, FontWeights.Bold, FontStretches.Normal),
+                text.Length <= 2 ? 16 : 12,
+                new SolidColorBrush(fg),
+                96);
+            dc.DrawText(ft, new Point((size - ft.Width) / 2, (size - ft.Height) / 2));
+        }
+        var bmp = new RenderTargetBitmap(size, size, 96, 96, PixelFormats.Pbgra32);
+        bmp.Render(visual);
+        bmp.Freeze();
+        return bmp;
+    }
 
     private void TitleBar_MouseLeftButtonDown(object sender, MouseButtonEventArgs e)
     {
